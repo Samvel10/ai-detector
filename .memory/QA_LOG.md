@@ -39,4 +39,4 @@ https://github.com/Samvel10/ai-detector
 
 ### Answer
 
-Սկսեցի ամբողջական ծրագիրը memory ֆայլերով (`.memory/`)՝ GitHub անունով `Samvel10/ai-detector`, և նույն workspace-ից ամբողջ կոդը push արեցի remote repository-ին։ Հարցերը/պատասխանները գրանցվում են `.memory/QA_LOG.md`-ում, փոփոխությունները՝ `.memory/CHANGELOG.md`-ում։
+Սկսեցի ամբողջական ծրագիրը memory ֆայլերով (`.memory/`)՝ GitHub անունով `Samvel10/ai-detector`, և նույն workspace-ից ամբողջ կոդը push արեցի remote repository-ին (`main` branch)։ Հարցերը/պատասխանները գրանցվում են `.memory/QA_LOG.md`-ում, փոփոխությունները՝ `.memory/CHANGELOG.md`-ում։

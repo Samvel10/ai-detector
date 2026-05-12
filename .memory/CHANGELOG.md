@@ -9,3 +9,4 @@
 - Added model and training configuration files under `configs/` and `training/configs/`.
 - Integrated upgraded vision inference into `workers/person/worker.py` (YOLO + ByteTrack + InsightFace + action model path).
 - Prepared repository push to GitHub with `.gitignore` excluding runtime artifacts and dependencies.
+- Pushed full project to `https://github.com/Samvel10/ai-detector` on branch `main`.
