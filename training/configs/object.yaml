@@ -1,0 +1,8 @@
+base_weights: yolov8m.pt
+data_yaml: coco8.yaml
+epochs: 50
+imgsz: 640
+batch: 16
+device: cuda
+project: models/weights/object
+name: yolo_finetune

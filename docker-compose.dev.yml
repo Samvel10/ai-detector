@@ -1,0 +1,39 @@
+version: "3.9"
+
+services:
+  redis:
+    image: redis:7
+    ports: ["6379:6379"]
+
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: app
+      POSTGRES_DB: app
+    ports: ["5432:5432"]
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    environment:
+      DATABASE_URL: sqlite:///./app.db
+      REDIS_URL: redis://redis:6379/0
+    depends_on: [redis]
+    ports: ["8000:8000"]
+
+  realtime-gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    command: uvicorn services.realtime.gateway:app --host 0.0.0.0 --port 8001
+    depends_on: [redis]
+    ports: ["8001:8001"]
+
+  realtime-bridge:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    command: python -m services.realtime.bridge
+    depends_on: [api, redis]

@@ -1,0 +1,23 @@
+{
+  "frame_sampling": {
+    "fps": 3,
+    "max_frames": 12000
+  },
+  "database_url": "sqlite:///./app.db",
+  "whisper_model_name": "base",
+  "person_model_name": "yolov8m.pt",
+  "person_conf_threshold": 0.35,
+  "person_track_iou_threshold": 0.3,
+  "storage": {
+    "root": "storage",
+    "videos_dir": "videos",
+    "audio_dir": "audio",
+    "frames_dir": "frames"
+  },
+  "redis": {
+    "url": "redis://localhost:6379/0",
+    "preprocessing_queue_name": "queue:preprocessing",
+    "audio_queue_name": "queue:audio",
+    "person_queue_name": "queue:person"
+  }
+}

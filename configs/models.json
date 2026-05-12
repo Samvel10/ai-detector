@@ -1,0 +1,32 @@
+{
+  "github_repository": "Samvel10/ai-detector",
+  "device": {
+    "prefer_gpu": true,
+    "batch_size": 8
+  },
+  "face": {
+    "backend": "insightface",
+    "model_pack": "buffalo_l",
+    "weights_path": "models/weights/face",
+    "embedding_dim": 512,
+    "detection_threshold": 0.5
+  },
+  "person_object": {
+    "backend": "ultralytics",
+    "base_weights": "yolov8m.pt",
+    "fine_tuned_weights": "models/weights/object/best.pt",
+    "tracker": "bytetrack.yaml",
+    "person_class_id": 0,
+    "conf_threshold": 0.35,
+    "iou_threshold": 0.45
+  },
+  "action": {
+    "backend": "video_classifier",
+    "base_weights": "models/weights/action/r3d_ucf101.pt",
+    "clip_frames": 16,
+    "clip_stride": 2,
+    "labels_path": "datasets/registry.yaml"
+  },
+  "datasets_root": "datasets/raw",
+  "training_outputs": "models/weights"
+}

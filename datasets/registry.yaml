@@ -1,0 +1,45 @@
+datasets_root: datasets/raw
+training_outputs: models/weights
+
+face:
+  train:
+    - name: vggface2
+      source: oxford-vgg/vggface2
+      notes: Identity-labeled faces for ArcFace fine-tuning
+    - name: msceleb1m_clean
+      source: MS-Celeb-1M cleaned subset
+      notes: Large-scale identity supervision
+  val:
+    - name: lfw
+      source: lfw
+      notes: Pair verification benchmark
+
+person:
+  train:
+    - name: coco_person
+      source: coco2017
+      class_filter: person
+    - name: crowdhuman
+      source: CrowdHuman
+    - name: mot17
+      source: MOT17
+    - name: mot20
+      source: MOT20
+
+object:
+  train:
+    - name: coco
+      source: coco2017
+    - name: open_images
+      source: openimages
+
+action:
+  train:
+    - name: kinetics400
+      source: kinetics400
+    - name: kinetics700
+      source: kinetics700
+    - name: ucf101
+      source: ucf101
+    - name: hmdb51
+      source: hmdb51

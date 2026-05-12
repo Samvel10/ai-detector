@@ -1,0 +1,41 @@
+version: "3.9"
+
+services:
+  redis:
+    image: redis:7
+    restart: always
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    env_file: ["deploy/env/staging.env"]
+    depends_on: [redis]
+    restart: always
+
+  realtime-gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    env_file: ["deploy/env/staging.env"]
+    command: uvicorn services.realtime.gateway:app --host 0.0.0.0 --port 8001
+    depends_on: [redis]
+    restart: always
+
+  realtime-bridge:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    env_file: ["deploy/env/staging.env"]
+    command: python -m services.realtime.bridge
+    depends_on: [api, redis]
+    restart: always
+
+  gpu-router:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    command: python -m services.scheduler.gpu_router
+    env_file: ["deploy/env/staging.env"]
+    depends_on: [redis]
+    restart: always

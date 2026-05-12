@@ -1,0 +1,6 @@
+output_path: models/weights/action/r3d_ucf101.pt
+num_classes: 101
+epochs: 20
+learning_rate: 0.0001
+device: cuda
+labels: []

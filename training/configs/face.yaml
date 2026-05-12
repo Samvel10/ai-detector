@@ -1,0 +1,12 @@
+output_dir: models/weights/face
+datasets:
+  train:
+    - datasets/raw/vggface2
+    - datasets/raw/msceleb1m_clean
+  val:
+    - datasets/raw/lfw
+model_pack: buffalo_l
+epochs: 10
+batch_size: 64
+learning_rate: 0.0001
+device: cuda

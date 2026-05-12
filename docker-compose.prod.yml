@@ -1,0 +1,164 @@
+version: "3.9"
+
+services:
+  redis:
+    image: redis:7
+    restart: always
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    env_file: ["deploy/env/prod.env"]
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: always
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; s=socket.socket(); s.connect(('127.0.0.1',8000)); s.close()"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+
+  realtime-gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    env_file: ["deploy/env/prod.env"]
+    command: uvicorn services.realtime.gateway:app --host 0.0.0.0 --port 8001
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: always
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; s=socket.socket(); s.connect(('127.0.0.1',8001)); s.close()"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+
+  realtime-bridge:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    env_file: ["deploy/env/prod.env"]
+    command: python -m services.realtime.bridge
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: always
+
+  gpu-router:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    env_file: ["deploy/env/prod.env"]
+    command: python -m services.scheduler.gpu_router
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: always
+
+  audio-gpu-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    env_file: ["deploy/env/prod.env"]
+    command: python3 -m workers.audio_gpu.worker
+    runtime: nvidia
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: [gpu]
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: always
+
+  person-gpu-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    env_file: ["deploy/env/prod.env"]
+    command: python3 -m workers.person_gpu.worker
+    runtime: nvidia
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: [gpu]
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: always
+
+  audio-cpu-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    env_file: ["deploy/env/prod.env"]
+    command: python -m workers.audio_cpu.worker
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: always
+
+  person-cpu-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    env_file: ["deploy/env/prod.env"]
+    command: python -m workers.person_cpu.worker
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: always
+
+  watchdog:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    env_file: ["deploy/env/prod.env"]
+    command: python -m services.self_heal.watchdog
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: always
+
+  retry-engine:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    env_file: ["deploy/env/prod.env"]
+    command: python -m services.self_heal.retry_engine
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: always
+
+  integrity-validator:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    env_file: ["deploy/env/prod.env"]
+    command: python -m services.self_heal.event_integrity_validator
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: always
+
+  reprocessor:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    env_file: ["deploy/env/prod.env"]
+    command: python -m services.self_heal.reprocessor
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: always
