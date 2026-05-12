@@ -1,4 +1,4 @@
-# AI Video Analysis - Step 1 Foundation
+# ai-detector (Samvel10/ai-detector)
 
 This project implements a production foundation for video analysis orchestration with audio and person intelligence:
 
@@ -189,4 +189,3 @@ Expected outcome:
   - `storage/videos/{video_id}/original.mp4`
   - `storage/audio/{video_id}/audio.wav`
   - `storage/frames/{video_id}/frame_XXXX.jpg`
-
