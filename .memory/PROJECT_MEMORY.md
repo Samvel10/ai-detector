@@ -4,6 +4,7 @@
 
 - **Owner / name:** `Samvel10/ai-detector`
 - **URL:** https://github.com/Samvel10/ai-detector
+- **Default working branch:** `Samo`
 - **Local workspace:** `/home/samo/vidioAnalize`
 
 This file is the canonical project memory. Every user question and assistant answer must be appended to `.memory/QA_LOG.md`. Every code or architecture change must be appended to `.memory/CHANGELOG.md`.
