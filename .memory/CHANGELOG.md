@@ -1,6 +1,8 @@
 # Changelog
 
-## 2026-05-12
+## 2026-05-12 (branch workflow)
+
+- Switched local development workflow to GitHub branch `Samo` (`origin/Samo`).
 
 - Created `.memory/` project memory (`PROJECT_MEMORY.md`, `CHANGELOG.md`, `QA_LOG.md`).
 - Documented GitHub repository `Samvel10/ai-detector`.

@@ -40,3 +40,13 @@ https://github.com/Samvel10/ai-detector
 ### Answer
 
 Սկսեցի ամբողջական ծրագիրը memory ֆայլերով (`.memory/`)՝ GitHub անունով `Samvel10/ai-detector`, և նույն workspace-ից ամբողջ կոդը push արեցի remote repository-ին (`main` branch)։ Հարցերը/պատասխանները գրանցվում են `.memory/QA_LOG.md`-ում, փոփոխությունները՝ `.memory/CHANGELOG.md`-ում։
+
+---
+
+### Question
+
+i want that you use Samo Branche
+
+### Answer
+
+Local repository-ն checkout արեցի `Samo` branch-ի վրա (`origin/Samo` tracking)։ Հաջորդ commit/push-երը կգնան `Samo` branch-ով։ Remote-ում `Samo`-ն արդեն `main`-ի հետ նույն commit-ում էր, այնպես որ կոդի տարբերություն չկար։
