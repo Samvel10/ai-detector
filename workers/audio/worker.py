@@ -88,7 +88,24 @@ def _is_low_quality_text(text: str) -> bool:
     if len(tokens) < 2:
         return True
     unique_ratio = len(set(tokens)) / len(tokens)
-    return unique_ratio < 0.35
+    if unique_ratio < 0.35:
+        return True
+    # Single-character repetition (Whisper hallucinates patterns like "Ə Ə Ə..." on noise)
+    longest_char = max((len(t) for t in tokens), default=0)
+    if longest_char <= 2 and len(tokens) > 8 and unique_ratio < 0.5:
+        return True
+    return False
+
+
+def _is_speech_segment(segment: dict) -> bool:
+    """Whisper's own gates: no_speech_prob (low = speech) and compression_ratio (high = repetition)."""
+    no_speech_prob = float(segment.get("no_speech_prob", 0.0) or 0.0)
+    if no_speech_prob > 0.6:
+        return False
+    compression_ratio = float(segment.get("compression_ratio", 0.0) or 0.0)
+    if compression_ratio > 2.4:
+        return False
+    return True
 
 
 def process_audio_task(task_id: str) -> None:
@@ -135,23 +152,29 @@ def process_audio_task(task_id: str) -> None:
         db.commit()
 
         model = get_whisper_model()
-        language_hint = str(getattr(settings, "whisper_language_hint", "hy") or "hy").strip() or "hy"
+        configured_hint = str(getattr(settings, "whisper_language_hint", "") or "").strip().lower()
+        whisper_language: str | None
+        if configured_hint in ("", "auto", "none"):
+            whisper_language = None
+        else:
+            whisper_language = configured_hint
         initial_prompt = None
-        if language_hint == "hy":
+        if whisper_language == "hy":
             initial_prompt = getattr(settings, "whisper_initial_prompt_hy", None)
 
         transcription = model.transcribe(
             str(audio_path),
             task="transcribe",
-            language=language_hint,
+            language=whisper_language,
             initial_prompt=initial_prompt,
             temperature=0,
             fp16=False,
             no_speech_threshold=0.6,
             compression_ratio_threshold=2.2,
+            condition_on_previous_text=False,
             verbose=False,
         )
-        language_detected = transcription.get("language", language_hint or "unknown")
+        language_detected = transcription.get("language") or whisper_language or "unknown"
         raw_segments = transcription.get("segments", [])
 
         segments = []
@@ -161,7 +184,8 @@ def process_audio_task(task_id: str) -> None:
             end_sec = float(segment.get("end", start_sec))
             text = str(segment.get("text", "")).strip()
             confidence = _segment_confidence(segment)
-            low_quality = _is_low_quality_text(text)
+            no_speech_prob = float(segment.get("no_speech_prob", 0.0) or 0.0)
+            low_quality = _is_low_quality_text(text) or not _is_speech_segment(segment)
             if low_quality:
                 text = "[Unclear speech/noise - transcription suppressed]"
                 confidence = min(confidence, 0.2)
@@ -172,8 +196,11 @@ def process_audio_task(task_id: str) -> None:
                 "confidence": confidence,
                 "language_detected": language_detected,
                 "transcript_quality": "low" if low_quality else "ok",
+                "no_speech_prob": no_speech_prob,
             }
             segments.append(segment_payload)
+            if low_quality:
+                continue
             events.append(
                 {
                     "event_id": f"{task.id}:speech_segment:{idx}",

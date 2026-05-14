@@ -30,3 +30,4 @@ models/weights/**
 !models/weights/.gitkeep
 intelligence-dashboard/node_modules/
 intelligence-dashboard/dist/
+graphify-out/

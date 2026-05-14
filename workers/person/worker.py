@@ -35,11 +35,18 @@ def get_vision_pipeline():
     return _VISION_PIPELINE
 
 
-def ensure_preprocessing_done(db, video_id: str) -> bool:
+def preprocessing_state(db, video_id: str) -> str:
+    """Return one of: 'success', 'failed', 'in_progress', 'missing'."""
     preprocessing = db.execute(
         select(Task).where(Task.video_id == video_id, Task.type == TASK_TYPE_PREPROCESSING).limit(1)
     ).scalar_one_or_none()
-    return preprocessing is not None and preprocessing.status == TaskStatus.success
+    if preprocessing is None:
+        return "missing"
+    if preprocessing.status == TaskStatus.success:
+        return "success"
+    if preprocessing.status == TaskStatus.failed:
+        return "failed"
+    return "in_progress"
 
 
 def process_person_task(task_id: str) -> None:
@@ -77,7 +84,16 @@ def process_person_task(task_id: str) -> None:
         if video is None:
             raise RuntimeError(f"Video not found for task {task_id}")
 
-        if not ensure_preprocessing_done(db, task.video_id):
+        state = preprocessing_state(db, task.video_id)
+        if state == "failed":
+            # Don't infinitely re-queue. Mark this person task failed so the
+            # video reaches a terminal state and clients stop polling.
+            task_manager.mark_task_failed(task, "preprocessing failed; person task cannot run")
+            task_manager.sync_video_status_from_task(video, task)
+            db.commit()
+            return
+        if state in ("in_progress", "missing"):
+            time.sleep(0.5)
             redis_client.lpush(
                 settings.person_queue_name,
                 json.dumps({"task_id": task.id, "video_id": task.video_id, "task_type": task.type}),
@@ -230,6 +246,7 @@ def process_person_task(task_id: str) -> None:
             "tracks": person_tracks,
         }
         task_manager.mark_task_success(task, task_result)
+        task_manager.sync_video_status_from_task(video, task)
         db.commit()
     except Exception as exc:
         task = db.execute(select(Task).where(Task.id == task_id)).scalar_one_or_none()

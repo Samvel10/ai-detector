@@ -5,6 +5,7 @@
   },
   "database_url": "sqlite:///./app.db",
   "whisper_model_name": "base",
+  "whisper_language_hint": "auto",
   "person_model_name": "yolov8m.pt",
   "person_conf_threshold": 0.35,
   "person_track_iou_threshold": 0.3,

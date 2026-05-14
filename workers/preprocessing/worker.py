@@ -67,6 +67,21 @@ def run_command(command: list[str], task_id: str, video_id: str) -> None:
         raise RuntimeError(error)
 
 
+def video_has_audio_stream(video_path: Path) -> bool:
+    """Probe the source for at least one audio stream. Sources like silent
+    surveillance clips or 4K stock B-roll often have zero audio streams; the
+    audio-extract ffmpeg command then fails with 'Output file does not contain
+    any stream', which we treat as 'no audio' rather than a fatal error."""
+    ffmpeg_bin = get_ffmpeg_binary()
+    completed = subprocess.run(
+        [ffmpeg_bin, "-nostdin", "-hide_banner", "-i", str(video_path)],
+        capture_output=True,
+        text=True,
+    )
+    stderr = completed.stderr or ""
+    return any("Audio:" in line for line in stderr.splitlines())
+
+
 def probe_audio_duration(audio_path: Path) -> float:
     with wave.open(str(audio_path), "rb") as wav_file:
         frame_count = wav_file.getnframes()
@@ -187,25 +202,38 @@ def process_preprocessing_task(task_id: str) -> None:
             frame_file.unlink()
 
         audio_path = audio_dir / "audio.wav"
-        run_command(
-            [
-                "ffmpeg",
-                "-nostdin",
-                "-y",
-                "-i",
-                str(video_path),
-                "-vn",
-                "-acodec",
-                "pcm_s16le",
-                "-ar",
-                "16000",
-                "-ac",
-                "1",
-                str(audio_path),
-            ],
-            task_id=task.id,
-            video_id=video_id,
-        )
+        has_audio = video_has_audio_stream(video_path)
+        if has_audio:
+            run_command(
+                [
+                    "ffmpeg",
+                    "-nostdin",
+                    "-y",
+                    "-i",
+                    str(video_path),
+                    "-vn",
+                    "-acodec",
+                    "pcm_s16le",
+                    "-ar",
+                    "16000",
+                    "-ac",
+                    "1",
+                    str(audio_path),
+                ],
+                task_id=task.id,
+                video_id=video_id,
+            )
+        else:
+            logger.info(
+                "video_has_no_audio_stream",
+                extra={
+                    "task_id": task.id,
+                    "job_id": video_id,
+                    "worker": "preprocessing",
+                    "audio_path": str(audio_path),
+                },
+            )
+            audio_path = None  # no audio task will be created
         frame_pattern = frames_dir / "frame_%04d.jpg"
         run_command(
             [
@@ -227,20 +255,37 @@ def process_preprocessing_task(task_id: str) -> None:
         frame_count = len(list(frames_dir.glob("frame_*.jpg")))
         if frame_count == 0:
             raise RuntimeError("No frames were extracted from the video")
-        audio_duration = probe_audio_duration(audio_path)
+        audio_duration = probe_audio_duration(audio_path) if audio_path is not None else 0.0
 
         result = {
             "video_id": video_id,
-            "audio_path": str(audio_path),
+            "audio_path": str(audio_path) if audio_path is not None else None,
             "frames_dir": str(frames_dir),
             "frame_count": frame_count,
             "audio_duration_sec": audio_duration,
+            "audio_available": audio_path is not None,
             "frame_sampling_fps": frame_sampling_fps,
             "frame_max_frames": frame_max_frames,
         }
-        event_manager.commit_event_batch(
-            video_id,
-            [
+        batch_events = [
+            {
+                "event_id": f"{task.id}:frame_processed",
+                "job_id": video_id,
+                "event_type": "frame_processed",
+                "timestamp_sec": 0.0,
+                "confidence": 1.0,
+                "source": "preprocessing_worker",
+                "payload": {
+                    "task_id": task.id,
+                    "frames_dir": str(frames_dir),
+                    "frame_count": frame_count,
+                    "frame_sampling_fps": frame_sampling_fps,
+                },
+            }
+        ]
+        if audio_path is not None:
+            batch_events.insert(
+                0,
                 {
                     "event_id": f"{task.id}:audio_extracted",
                     "job_id": video_id,
@@ -253,27 +298,16 @@ def process_preprocessing_task(task_id: str) -> None:
                         "audio_path": str(audio_path),
                     },
                 },
-                {
-                    "event_id": f"{task.id}:frame_processed",
-                    "job_id": video_id,
-                    "event_type": "frame_processed",
-                    "timestamp_sec": 0.0,
-                    "confidence": 1.0,
-                    "source": "preprocessing_worker",
-                    "payload": {
-                        "task_id": task.id,
-                        "frames_dir": str(frames_dir),
-                        "frame_count": frame_count,
-                        "frame_sampling_fps": frame_sampling_fps,
-                    },
-                },
-            ],
-        )
+            )
+        event_manager.commit_event_batch(video_id, batch_events)
 
         task_manager.mark_task_success(task, result=result)
-        audio_task = task_manager.create_audio_task(video=video, audio_path=str(audio_path))
-        task_manager.enqueue_task(audio_task)
-        task_manager.sync_video_status_from_task(video, audio_task)
+        if audio_path is not None:
+            audio_task = task_manager.create_audio_task(video=video, audio_path=str(audio_path))
+            task_manager.enqueue_task(audio_task)
+            task_manager.sync_video_status_from_task(video, audio_task)
+        else:
+            task_manager.sync_video_status_from_task(video, task)
         task_manager.mark_video_status(video, video.status, metadata_json=result)
         db.commit()
         logger.info(

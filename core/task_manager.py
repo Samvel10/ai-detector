@@ -5,6 +5,7 @@ from datetime import datetime
 
 from redis import Redis
 from redis.exceptions import ConnectionError as RedisConnectionError
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.config import settings
@@ -204,12 +205,19 @@ class TaskManager:
         self.db.flush()
 
     def sync_video_status_from_task(self, video: Video, task: Task) -> None:
-        if task.status == TaskStatus.queued:
-            video.status = VideoStatus.queued
-        elif task.status == TaskStatus.running:
+        # Compute aggregate status across all tasks for this video so a single
+        # task's success doesn't prematurely mark the video "completed" while
+        # sibling tasks are still running.
+        sibling_statuses = (
+            self.db.execute(select(Task.status).where(Task.video_id == video.id)).scalars().all()
+        )
+        statuses = set(sibling_statuses) | {task.status}
+        if TaskStatus.running in statuses:
             video.status = VideoStatus.processing
-        elif task.status == TaskStatus.success:
-            video.status = VideoStatus.completed
-        elif task.status == TaskStatus.failed:
+        elif TaskStatus.failed in statuses:
             video.status = VideoStatus.failed
+        elif TaskStatus.pending in statuses or TaskStatus.queued in statuses:
+            video.status = VideoStatus.queued
+        elif statuses == {TaskStatus.success}:
+            video.status = VideoStatus.completed
         self.db.flush()
