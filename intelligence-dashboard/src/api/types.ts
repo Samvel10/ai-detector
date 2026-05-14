@@ -5,6 +5,15 @@ export type VideoStatusResponse = {
   tasks: { task_id: string; type: string; status: string; error: string | null }[];
 };
 
+export type VideoSummary = {
+  video_id: string;
+  original_filename: string;
+  status: string;
+  metadata: Record<string, unknown>;
+  task_summary: Record<string, string>;
+  created_at: string | null;
+};
+
 export type EventRecord = {
   event_id: string;
   job_id: string;

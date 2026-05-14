@@ -1,9 +1,8 @@
 import { useMemo, useState } from "react";
 import { useDashboardStore } from "../state/useDashboardStore";
-import { api } from "../api/client";
+import { api, apiBase } from "../api/client";
 
 export function ControlPanel() {
-  const selectedVideo = useDashboardStore((s) => s.selectedVideo);
   const setSelectedVideoUrl = useDashboardStore((s) => s.setSelectedVideoUrl);
   const selectedEntity = useDashboardStore((s) => s.selectedEntity);
   const graphViewMode = useDashboardStore((s) => s.graphViewMode);
@@ -59,7 +58,7 @@ export function ControlPanel() {
     try {
       const response = await new Promise<{ video_id: string; status: string }>((resolve, reject) => {
         const xhr = new XMLHttpRequest();
-        xhr.open("POST", "http://localhost:8000/upload-video");
+        xhr.open("POST", `${apiBase}/upload-video`);
         xhr.upload.onprogress = (event) => {
           if (event.lengthComputable) {
             setUploadProgress(Math.round((event.loaded / event.total) * 100));
@@ -77,7 +76,7 @@ export function ControlPanel() {
       });
 
       setSelectedVideo(response.video_id);
-      setSelectedVideoUrl(`http://localhost:8000/videos/${response.video_id}/file`);
+      setSelectedVideoUrl(`${apiBase}/videos/${response.video_id}/file`);
       setStatusText(`Video uploaded. id=${response.video_id}. Real pipeline queued.`);
       await api.rebuildGraph(response.video_id);
       setStatusText(`Real analysis queued and graph rebuild requested for ${response.video_id}`);
@@ -89,12 +88,18 @@ export function ControlPanel() {
   };
 
   return (
-    <div className="space-y-4 rounded-xl border border-slate-800 bg-slate-900 p-4">
-      <h2 className="text-sm font-semibold text-slate-200">Analysis Control</h2>
-      <div className="rounded border border-slate-700 bg-slate-950 p-3">
-        <p className="mb-2 text-xs text-slate-400">Video Input</p>
-        <label className="flex cursor-pointer items-center justify-center rounded border border-dashed border-slate-600 p-3 text-xs text-slate-300 hover:border-blue-500">
-          Drag and drop or click to pick video
+    <div className="space-y-4 rounded-2xl border border-slate-800/80 bg-gradient-to-br from-slate-900/95 to-slate-950/95 p-4 shadow-lg shadow-black/30">
+      <div>
+        <h2 className="text-sm font-semibold text-slate-100">Analysis Control</h2>
+        <p className="mt-0.5 text-[11px] text-slate-500">Upload a video and trigger the real pipeline.</p>
+      </div>
+      <div className="rounded-xl border border-slate-800/80 bg-slate-950/70 p-3">
+        <p className="mb-2 text-[11px] uppercase tracking-wide text-slate-500">Video Input</p>
+        <label className="flex cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-slate-700 p-4 text-xs text-slate-300 transition-colors hover:border-sky-500 hover:bg-sky-500/5">
+          <span className="flex flex-col items-center gap-1">
+            <span className="text-base">⬆️</span>
+            <span>Drag a video here or click to pick</span>
+          </span>
           <input
             type="file"
             accept="video/*"
@@ -103,34 +108,49 @@ export function ControlPanel() {
           />
         </label>
         {previewUrl ? (
-          <video className="mt-3 aspect-video w-full rounded bg-black object-contain" src={previewUrl} controls />
+          <video className="mt-3 aspect-video w-full rounded-lg bg-black object-contain" src={previewUrl} controls />
         ) : null}
-        <div className="mt-3 h-2 w-full rounded bg-slate-800">
-          <div className="h-2 rounded bg-blue-500 transition-all" style={{ width: `${uploadProgress}%` }} />
+        <div className="mt-3 h-1.5 w-full rounded-full bg-slate-800/80">
+          <div className="h-1.5 rounded-full bg-gradient-to-r from-sky-500 to-violet-500 transition-all" style={{ width: `${uploadProgress}%` }} />
         </div>
-        <p className="mt-1 text-xs text-slate-400">{statusText}</p>
+        <p className="mt-1 text-[11px] text-slate-400">{statusText}</p>
       </div>
 
-      <div className="rounded border border-slate-700 bg-slate-950 p-3">
-        <p className="mb-2 text-xs text-slate-400">Analysis Modes</p>
-        <label className="mb-2 flex items-center gap-2 text-xs">
-          <input type="checkbox" checked={modes.face} onChange={(e) => setMode("face", e.target.checked)} />
-          Face Recognition
-        </label>
-        <label className="mb-2 flex items-center gap-2 text-xs">
-          <input type="checkbox" checked={modes.person} onChange={(e) => setMode("person", e.target.checked)} />
-          Person Tracking
-        </label>
-        <label className="mb-2 flex items-center gap-2 text-xs">
-          <input type="checkbox" checked={modes.object} onChange={(e) => setMode("object", e.target.checked)} />
-          Object/Product Detection
-        </label>
-        <label className="mb-2 flex items-center gap-2 text-xs">
-          <input type="checkbox" checked={modes.audio} onChange={(e) => setMode("audio", e.target.checked)} />
-          Audio Analysis (Whisper)
-        </label>
-        <label className="flex items-center gap-2 rounded bg-slate-800 px-2 py-1 text-xs text-blue-200">
-          <input type="checkbox" checked={fullMode} onChange={(e) => setAllModes(e.target.checked)} />
+      <div className="rounded-xl border border-slate-800/80 bg-slate-950/70 p-3">
+        <p className="mb-2 text-[11px] uppercase tracking-wide text-slate-500">Analysis Modes (synthetic /start-analysis)</p>
+        <div className="grid grid-cols-2 gap-2 text-xs">
+          {([
+            ["face", "Face Recognition"],
+            ["person", "Person Tracking"],
+            ["object", "Object Detection"],
+            ["audio", "Audio (Whisper)"],
+          ] as const).map(([key, label]) => (
+            <label
+              key={key}
+              className={`flex cursor-pointer items-center gap-2 rounded-lg border px-2 py-2 transition-colors ${
+                modes[key]
+                  ? "border-sky-700/60 bg-sky-500/10 text-sky-200"
+                  : "border-slate-800 bg-slate-900/60 text-slate-300 hover:border-slate-700"
+              }`}
+            >
+              <input
+                type="checkbox"
+                className="accent-sky-500"
+                checked={modes[key]}
+                onChange={(e) => setMode(key, e.target.checked)}
+              />
+              {label}
+            </label>
+          ))}
+        </div>
+        <label
+          className={`mt-2 flex cursor-pointer items-center gap-2 rounded-lg border px-2 py-2 text-xs transition-colors ${
+            fullMode
+              ? "border-violet-700/70 bg-violet-500/10 text-violet-200"
+              : "border-slate-800 bg-slate-900/60 text-slate-300"
+          }`}
+        >
+          <input type="checkbox" className="accent-violet-500" checked={fullMode} onChange={(e) => setAllModes(e.target.checked)} />
           FULL MODE (all enabled)
         </label>
       </div>
@@ -138,58 +158,59 @@ export function ControlPanel() {
       <button
         onClick={uploadVideo}
         disabled={uploading || !file}
-        className="w-full rounded bg-blue-600 px-3 py-2 text-sm font-semibold text-white disabled:bg-slate-700"
+        className="w-full rounded-lg bg-gradient-to-r from-sky-500 to-violet-500 px-3 py-2.5 text-sm font-semibold text-white shadow-lg shadow-sky-900/30 transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:bg-none disabled:opacity-50 disabled:shadow-none"
       >
-        {uploading ? "Starting Analysis..." : "Start Analysis"}
+        {uploading ? "Uploading…" : file ? "Upload & Start Analysis" : "Pick a video first"}
       </button>
-      <div>
-        <label className="mb-1 block text-xs text-slate-400">Video ID</label>
-        <input
-          className="w-full rounded bg-slate-800 p-2 text-sm"
-          value={selectedVideo}
-          onChange={(e) => {
-            const nextId = e.target.value.trim();
-            setSelectedVideo(nextId);
-            if (nextId) {
-              setSelectedVideoUrl(`http://localhost:8000/videos/${nextId}/file`);
-            }
-          }}
-          placeholder="Enter video_id"
-        />
-      </div>
-      <div>
-        <label className="mb-1 block text-xs text-slate-400">Entity ID</label>
-        <input
-          className="w-full rounded bg-slate-800 p-2 text-sm"
-          value={selectedEntity}
-          onChange={(e) => setSelectedEntity(e.target.value)}
-          placeholder="Optional entity_id"
-        />
-      </div>
-      <div>
-        <label className="mb-1 block text-xs text-slate-400">Graph View</label>
-        <select
-          className="w-full rounded bg-slate-800 p-2 text-sm"
-          value={graphViewMode}
-          onChange={(e) => setGraphViewMode(e.target.value as "force" | "timeline")}
-        >
-          <option value="force">Force</option>
-          <option value="timeline">Timeline</option>
-        </select>
-      </div>
-      <div>
-        <p className="mb-1 text-xs text-slate-400">Filters</p>
-        {["speech_segment", "person_detected", "object_detected", "face_detected", "action_detected", "semantic", "prediction"].map((filter) => (
-          <button
-            key={filter}
-            onClick={() => toggleFilter(filter)}
-            className={`mr-2 mt-2 rounded px-2 py-1 text-xs ${
-              activeFilters.includes(filter) ? "bg-blue-600 text-white" : "bg-slate-700 text-slate-200"
-            }`}
+
+      <div className="grid grid-cols-1 gap-2">
+        <div>
+          <label className="mb-1 block text-[11px] uppercase tracking-wide text-slate-500">Entity ID (optional)</label>
+          <input
+            className="w-full rounded-lg border border-slate-800 bg-slate-900/70 px-3 py-2 text-sm text-slate-200 outline-none focus:border-sky-600"
+            value={selectedEntity}
+            onChange={(e) => setSelectedEntity(e.target.value)}
+            placeholder="person:..., audio_speaker:..."
+          />
+        </div>
+        <div>
+          <label className="mb-1 block text-[11px] uppercase tracking-wide text-slate-500">Graph View</label>
+          <select
+            className="w-full rounded-lg border border-slate-800 bg-slate-900/70 px-3 py-2 text-sm text-slate-200 outline-none focus:border-sky-600"
+            value={graphViewMode}
+            onChange={(e) => setGraphViewMode(e.target.value as "force" | "timeline")}
           >
-            {filter}
-          </button>
-        ))}
+            <option value="force">Force</option>
+            <option value="timeline">Timeline</option>
+          </select>
+        </div>
+      </div>
+
+      <div>
+        <p className="mb-2 text-[11px] uppercase tracking-wide text-slate-500">Event filters</p>
+        <div className="flex flex-wrap gap-1.5">
+          {[
+            "speech_segment",
+            "person_detected",
+            "object_detected",
+            "face_detected",
+            "action_detected",
+            "semantic",
+            "prediction",
+          ].map((filter) => (
+            <button
+              key={filter}
+              onClick={() => toggleFilter(filter)}
+              className={`rounded-full px-2.5 py-1 text-[11px] transition-colors ${
+                activeFilters.includes(filter)
+                  ? "bg-sky-500/20 text-sky-200 ring-1 ring-sky-600/60"
+                  : "bg-slate-800/80 text-slate-400 hover:bg-slate-700/80"
+              }`}
+            >
+              {filter}
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   );

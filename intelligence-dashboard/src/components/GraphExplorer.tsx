@@ -45,25 +45,29 @@ export function GraphExplorer() {
   }, [data, setSelectedEntity]);
 
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-900 p-4">
+    <div className="rounded-2xl border border-slate-800/80 bg-gradient-to-br from-slate-900/95 to-slate-950/95 p-4 shadow-lg shadow-black/30">
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-slate-200">Graph Explorer</h2>
+        <div>
+          <h2 className="text-sm font-semibold text-slate-100">Graph Explorer</h2>
+          <p className="mt-0.5 text-[11px] text-slate-500">
+            Live graph: {(graphPayload.node_count as number | undefined) ?? "-"} nodes ·{" "}
+            {(graphPayload.edge_count as number | undefined) ?? "-"} edges
+          </p>
+        </div>
         <button
           disabled={!selectedVideo || rebuild.isPending}
           onClick={() => rebuild.mutate()}
-          className="rounded bg-blue-600 px-3 py-1 text-xs text-white disabled:bg-slate-700"
+          className="rounded-md border border-slate-700 bg-slate-800/70 px-2.5 py-1 text-[11px] text-slate-200 hover:border-sky-600 hover:text-sky-300 disabled:opacity-40"
         >
-          Rebuild Graph
+          {rebuild.isPending ? "rebuilding…" : "rebuild graph"}
         </button>
       </div>
-      <p className="mb-2 text-xs text-slate-400">
-        Live graph: nodes {(graphPayload.node_count as number | undefined) ?? "-"} | edges{" "}
-        {(graphPayload.edge_count as number | undefined) ?? "-"}
-      </p>
-      {!data?.timeline?.length ? (
-        <p className="mb-2 text-xs text-slate-500">Loading graph timeline...</p>
+      {!selectedEntity ? (
+        <p className="mb-2 text-xs text-slate-500">Pick an entity ID (e.g. <span className="font-mono">person:p-1</span>) to render its lifecycle.</p>
+      ) : !data?.timeline?.length ? (
+        <p className="mb-2 text-xs text-slate-500">No graph timeline for this entity yet.</p>
       ) : null}
-      <div ref={ref} className="h-64 w-full rounded bg-slate-950" />
+      <div ref={ref} className="h-64 w-full rounded-lg border border-slate-800 bg-slate-950/80" />
     </div>
   );
 }

@@ -11,25 +11,32 @@ export function useRealtimeVideo() {
   const hydrateBootstrap = useLiveStore((s) => s.hydrateBootstrap);
   const reset = useLiveStore((s) => s.reset);
 
+  // The realtime gateway has known compatibility issues with the current
+  // uvicorn/websockets pairing. The dashboard falls back to polling these
+  // bootstrap endpoints every few seconds, which is sufficient for live UX.
   const { data: events } = useQuery({
     queryKey: ["bootstrap-events", selectedVideo],
     queryFn: () => api.getEvents(selectedVideo),
     enabled: !!selectedVideo,
+    refetchInterval: 3000,
   });
   const { data: enriched } = useQuery({
     queryKey: ["bootstrap-enriched", selectedVideo],
     queryFn: () => api.getEnrichedEvents(selectedVideo),
     enabled: !!selectedVideo,
+    refetchInterval: 4000,
   });
   const { data: scene } = useQuery({
     queryKey: ["bootstrap-scene", selectedVideo],
     queryFn: () => api.getScene(selectedVideo),
     enabled: !!selectedVideo,
+    refetchInterval: 6000,
   });
   const { data: predScene } = useQuery({
     queryKey: ["bootstrap-pred-scene", selectedVideo],
     queryFn: () => api.getPredictionScene(selectedVideo),
     enabled: !!selectedVideo,
+    refetchInterval: 6000,
   });
   const bootstrapHashesRef = useRef<Record<string, string>>({});
 

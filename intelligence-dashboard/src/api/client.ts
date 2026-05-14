@@ -7,9 +7,12 @@ import type {
   SceneResponse,
   TimelineResponse,
   VideoStatusResponse,
+  VideoSummary,
 } from "./types";
 
 const API_BASE = (import.meta.env.VITE_API_BASE as string | undefined) ?? "http://localhost:8000";
+
+export const apiBase = API_BASE;
 
 async function request<T>(path: string, init?: RequestInit, retries = 2): Promise<T> {
   try {
@@ -23,6 +26,16 @@ async function request<T>(path: string, init?: RequestInit, retries = 2): Promis
 }
 
 export const api = {
+  listVideos(limit = 50) {
+    return request<{ videos: VideoSummary[] }>(`/videos?limit=${limit}`);
+  },
+  getStatus() {
+    return request<{
+      api: string;
+      redis: { status: string; error: string | null; queues: Record<string, number> };
+      database: { status: string; url: string; error: string | null };
+    }>(`/status`);
+  },
   getVideo(videoId: string) {
     return request<VideoStatusResponse>(`/videos/${videoId}`);
   },

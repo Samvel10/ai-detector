@@ -87,12 +87,20 @@ export function VideoIntelligencePanel() {
     .slice(0, 3);
 
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-900 p-4">
-      <h2 className="mb-3 text-sm font-semibold text-slate-200">Video Intelligence Panel</h2>
-      <div className="relative aspect-video w-full rounded bg-black">
+    <div className="rounded-2xl border border-slate-800/80 bg-gradient-to-br from-slate-900/95 to-slate-950/95 p-4 shadow-lg shadow-black/30">
+      <div className="mb-3 flex items-center justify-between">
+        <div>
+          <h2 className="text-sm font-semibold text-slate-100">Video Player</h2>
+          <p className="mt-0.5 text-[11px] text-slate-500">Overlay boxes track detections at the current frame.</p>
+        </div>
+        <span className="mono rounded-md border border-slate-700 bg-slate-900/80 px-2 py-1 text-[11px] text-slate-300">
+          t = {currentTime.toFixed(2)}s
+        </span>
+      </div>
+      <div className="relative overflow-hidden rounded-xl border border-slate-800 bg-black">
         <video
           ref={videoRef}
-          className="h-full w-full rounded object-contain"
+          className="aspect-video h-full w-full bg-black object-contain"
           controls
           src={selectedVideoUrl || undefined}
           onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime)}
@@ -102,10 +110,12 @@ export function VideoIntelligencePanel() {
             <div
               key={box.key}
               title={box.tooltip}
-              className={`pointer-events-auto cursor-help absolute border-2 ${box.color}`}
+              className={`pointer-events-auto cursor-help absolute rounded-sm border-2 backdrop-blur-[1px] ${box.color}`}
               style={{ left: `${box.leftPct}%`, top: `${box.topPct}%`, width: `${box.widthPct}%`, height: `${box.heightPct}%` }}
             >
-              <span className="absolute -top-4 left-0 rounded bg-black/70 px-1 text-[10px]">{box.label}</span>
+              <span className="absolute -top-5 left-0 rounded bg-black/80 px-1.5 py-0.5 text-[10px] font-medium">
+                {box.label}
+              </span>
             </div>
           ))}
         </div>
@@ -115,6 +125,7 @@ export function VideoIntelligencePanel() {
         min={0}
         max={Math.max(1, videoRef.current?.duration ?? 0)}
         value={currentTime}
+        step={0.01}
         onChange={(e) => {
           const t = Number(e.target.value);
           setCurrentTime(t);
@@ -124,18 +135,23 @@ export function VideoIntelligencePanel() {
         }}
         className="mt-3 w-full"
       />
-      <p className="mt-1 text-xs text-slate-400">Current time: {currentTime.toFixed(1)}s</p>
-      <div className="mt-2 rounded bg-slate-800 p-2 text-xs text-slate-300">
-        <p className="font-semibold text-slate-200">Action Insight</p>
-        {actionEvents.length === 0 ? (
-          <p className="text-slate-400">No action event yet.</p>
-        ) : (
-          actionEvents.map((item, idx) => (
-            <p key={`${item.trackId}-${idx}`}>
-              {item.ts.toFixed(2)}s | {item.trackId} | {item.action}
-            </p>
-          ))
-        )}
+      <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
+        <div className="rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-2">
+          <p className="text-[10px] uppercase tracking-wide text-slate-500">action insight</p>
+          {actionEvents.length === 0 ? (
+            <p className="mt-1 text-slate-400">No action recognized yet.</p>
+          ) : (
+            actionEvents.slice(0, 1).map((item, idx) => (
+              <p key={`${item.trackId}-${idx}`} className="mt-1 text-slate-100">
+                {item.action} <span className="text-slate-500">· {item.trackId} · {item.ts.toFixed(1)}s</span>
+              </p>
+            ))
+          )}
+        </div>
+        <div className="rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-2">
+          <p className="text-[10px] uppercase tracking-wide text-slate-500">visible now</p>
+          <p className="mt-1 text-slate-100">{overlays.length} detection{overlays.length === 1 ? "" : "s"}</p>
+        </div>
       </div>
     </div>
   );

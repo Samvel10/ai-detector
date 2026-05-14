@@ -261,6 +261,34 @@ def upload_video(
     return {"video_id": result["video_id"], "status": result["status"]}
 
 
+@app.get("/videos")
+def list_videos(
+    limit: int = 50,
+    db: Session = Depends(get_db),
+) -> dict:
+    rows = (
+        db.execute(
+            select(Video).order_by(Video.created_at.desc()).limit(max(1, min(500, limit)))
+        )
+        .scalars()
+        .all()
+    )
+    videos = []
+    for video in rows:
+        tasks = db.execute(select(Task).where(Task.video_id == video.id)).scalars().all()
+        videos.append(
+            {
+                "video_id": video.id,
+                "original_filename": video.original_filename,
+                "status": video.status.value,
+                "metadata": video.metadata_json,
+                "task_summary": {t.type: t.status.value for t in tasks},
+                "created_at": video.created_at.isoformat() if video.created_at else None,
+            }
+        )
+    return {"videos": videos}
+
+
 @app.get("/videos/{video_id}")
 def get_video_status(
     video_id: str,
